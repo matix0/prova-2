@@ -1,45 +1,75 @@
 ?start     : program
 
-program    : stmt*
+program    : declaration*
+
+?declaration: var_decl
+            | stmt
+
+var_decl   : "var" VAR ["=" expr] ";"
 
 ?stmt      : expr ";"
            | print_cmd
-           // | if_cmd
-           // | for_cmd
-           // | ...
+           | block
+           | if_stmt
+           | while_stmt
+           | for_stmt
 
 print_cmd  : "print" expr ";"
+block      : "{" declaration* "}"
+if_stmt    : "if" "(" expr ")" stmt ["else" stmt]
+while_stmt : "while" "(" expr ")" stmt
+for_stmt   : "for" "(" for_init for_cond ";" for_incr ")" stmt
+
+for_init   : var_decl | expr ";" | ";"
+for_cond   : expr?
+for_incr   : expr?
 
 // EXPRESSÕES
-?expr      : test
+?expr      : assignment
 
-?test      : test "==" cmp  -> eq
-           | test "!=" cmp  -> ne
-           | cmp
+?assignment: call "." VAR "=" assignment   -> setattr
+           | VAR "=" assignment           -> assign
+           | logic_or
 
-?cmp       : cmp ">" factor   -> gt
-           | cmp "<" factor   -> lt
-           | cmp ">=" factor  -> ge
-           | cmp "<=" factor  -> le
-           | factor
+?logic_or  : logic_and
+           | logic_or "or" logic_and   -> or_
 
-?factor    : factor "+" term  -> add
-           | factor "-" term  -> sub
-           | term
+?logic_and : equality
+           | logic_and "and" equality  -> and_
 
-?term      : term "*" atom   -> mul
-           | term "/" atom   -> div 
-           | atom
+?equality  : comparison
+           | equality "==" comparison  -> eq
+           | equality "!=" comparison  -> ne
 
-?atom      : NUMBER 
+?comparison: term
+           | comparison ">" term       -> gt
+           | comparison "<" term       -> lt
+           | comparison ">=" term      -> ge
+           | comparison "<=" term      -> le
+
+?term      : factor
+           | term "+" factor           -> add
+           | term "-" factor           -> sub
+
+?factor    : unary
+           | factor "*" unary          -> mul
+           | factor "/" unary          -> div
+
+?unary     : "!" unary                 -> not_
+           | "-" unary                 -> neg
+           | call
+
+?call      : primary
+           | call "(" params ")"       -> call
+           | call "." VAR              -> getattr
+
+?primary   : NUMBER 
            | BOOL
            | VAR
            | STRING
            | NIL
-           | "(" cmp ")"
-           | call
+           | "(" expr ")"
 
-call       : VAR "(" params ")"
 params     : [ expr ("," expr )* ]
 
 BOOL.2     : "true" | "false"

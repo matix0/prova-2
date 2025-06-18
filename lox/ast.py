@@ -2,6 +2,8 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Callable
 
+from lox.runtime import truthy
+
 from .ctx import Ctx
 
 # Declaramos nossa classe base num módulo separado para esconder um pouco de
@@ -11,6 +13,7 @@ from .ctx import Ctx
 # legível. Também possui funcionalidades para navegar na árvore usando cursores
 # e métodos de visitação.
 from .node import Node
+
 
 #
 # TIPOS BÁSICOS
@@ -114,7 +117,14 @@ class And(Expr):
 
     Ex.: x and y
     """
+    left: Expr
+    right: Expr
 
+    def eval(self, ctx: Ctx):
+        left_value = self.left.eval(ctx)
+        if not truthy(left_value):
+            return left_value
+        return self.right.eval(ctx)
 
 @dataclass
 class Or(Expr):
@@ -122,7 +132,14 @@ class Or(Expr):
     Uma operação infixa com dois operandos.
     Ex.: x or y
     """
+    left: Expr
+    right: Expr
 
+    def eval(self, ctx: Ctx):
+        left_value = self.left.eval(ctx)
+        if truthy(left_value):
+            return left_value
+        return self.right.eval(ctx)
 
 @dataclass
 class UnaryOp(Expr):
@@ -131,28 +148,28 @@ class UnaryOp(Expr):
 
     Ex.: -x, !x
     """
+    op: Callable
+    expr: Expr
 
+    def eval(self, ctx):
+        return self.op(self.expr.eval(ctx))
 
 @dataclass
 class Call(Expr):
     """
-    Uma chamada de função.
+    Uma chamada de função
 
     Ex.: fat(42)
     """
-
-    name: str
+    callee: Expr
     params: list[Expr]
-
+    
     def eval(self, ctx: Ctx):
-        func = ctx[self.name]
-        params = []
-        for param in self.params:
-            params.append(param.eval(ctx))
-
+        func = self.callee.eval(ctx)
+        params = [param.eval(ctx) for param in self.params]
         if callable(func):
             return func(*params)
-        raise TypeError(f"{self.name} não é uma função!")
+        raise TypeError(f"{self.callee} não é uma função!")
 
 
 @dataclass
@@ -180,7 +197,13 @@ class Assign(Expr):
 
     Ex.: x = 42
     """
+    name: str
+    value: Expr
 
+    def eval(self, ctx: Ctx):
+        val = self.value.eval(ctx)
+        ctx[self.name] = val
+        return val
 
 @dataclass
 class Getattr(Expr):
@@ -189,7 +212,16 @@ class Getattr(Expr):
 
     Ex.: x.y
     """
+    obj: Expr
+    attr: str
 
+    def eval(self, ctx: Ctx):
+        obj_value = self.obj.eval(ctx)
+        try:
+            return getattr(obj_value, self.attr)
+        except AttributeError:
+            obj_type = type(obj_value).__name__
+            raise AttributeError(f"Objeto do tipo '{obj_type}' não possui o atributo '{self.attr}'")
 
 @dataclass
 class Setattr(Expr):
@@ -198,7 +230,15 @@ class Setattr(Expr):
 
     Ex.: x.y = 42
     """
+    obj: Expr
+    attr: str
+    value: Expr
 
+    def eval(self, ctx: Ctx):
+        obj_value = self.obj.eval(ctx)
+        val = self.value.eval(ctx)
+        setattr(obj_value, self.attr, val)
+        return val
 
 #
 # COMANDOS
@@ -210,12 +250,11 @@ class Print(Stmt):
 
     Ex.: print "Hello, world!";
     """
-
     expr: Expr
-
+    
     def eval(self, ctx: Ctx):
         value = self.expr.eval(ctx)
-        print(value)
+        print(lox_str(value))
 
 
 @dataclass
@@ -234,6 +273,12 @@ class VarDef(Stmt):
 
     Ex.: var x = 42;
     """
+    name: str
+    value: Expr
+
+    def eval(self, ctx: Ctx):
+        val = self.value.eval(ctx)
+        ctx.scope[self.name] = val
 
 
 @dataclass
@@ -243,15 +288,16 @@ class If(Stmt):
 
     Ex.: if (x > 0) { ... } else { ... }
     """
+    condition: Expr
+    then_stmt: Stmt
+    else_stmt: Stmt
 
-
-@dataclass
-class For(Stmt):
-    """
-    Representa um laço de repetição.
-
-    Ex.: for (var i = 0; i < 10; i++) { ... }
-    """
+    def eval(self, ctx: Ctx):
+        condition_value = self.condition.eval(ctx)
+        if truthy(condition_value):
+            self.then_stmt.eval(ctx)
+        else:
+            self.else_stmt.eval(ctx)
 
 
 @dataclass
@@ -261,15 +307,26 @@ class While(Stmt):
 
     Ex.: while (x > 0) { ... }
     """
+    condition: Expr
+    body: Stmt
+
+    def eval(self, ctx: Ctx):
+        while truthy(self.condition.eval(ctx)):
+            self.body.eval(ctx)
 
 
 @dataclass
-class Block(Node):
+class Block(Stmt):
     """
     Representa bloco de comandos.
 
     Ex.: { var x = 42; print x;  }
     """
+    declarations: list[Stmt]
+
+    def eval(self, ctx: Ctx):
+        for declaration in self.declarations:
+            declaration.eval(ctx)
 
 
 @dataclass
@@ -288,3 +345,34 @@ class Class(Stmt):
 
     Ex.: class B < A { ... }
     """
+
+
+@dataclass
+class ExprStmt(Stmt):
+    """
+    Representa uma expressão usada como statement.
+    
+    Ex.: x = 42; (quando usado como statement)
+    """
+    expr: Expr
+    
+    def eval(self, ctx: Ctx):
+        self.expr.eval(ctx)
+
+
+def lox_str(value):
+    """
+    Converte um valor Python para sua representação string no Lox.
+    """
+    if value is True:
+        return "true"
+    elif value is False:
+        return "false"
+    elif value is None:
+        return "nil"
+    elif isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    elif isinstance(value, str):
+        return value
+    else:
+        return str(value)
