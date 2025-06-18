@@ -120,10 +120,10 @@ class LoxTransformer(Transformer):
         return increment
 
     # Operações matemáticas básicas
-    mul = op_handler(op.mul)
-    div = op_handler(op.truediv)
-    sub = op_handler(op.sub)
-    add = op_handler(op.add)
+    mul = op_handler(op.lox_mul)
+    div = op_handler(op.lox_truediv)
+    sub = op_handler(op.lox_sub)
+    add = op_handler(op.lox_add)
 
     # Comparações
     gt = op_handler(op.gt)
@@ -146,8 +146,11 @@ class LoxTransformer(Transformer):
         return Var(name)
 
     def NUMBER(self, token):
-        num = float(token)
-        return Literal(num)
+        text = str(token)
+        if '.' in text:
+            return Literal(float(text))
+        else:
+            return Literal(int(text))
     
     def STRING(self, token):
         text = str(token)[1:-1]

@@ -22,10 +22,22 @@ from lark import Lark, Transformer, v_args
 
 # Modifique a gramática abaixo para que ela reconheça strings com variáveis
 grammar = r"""
-string    : QUOTE NON_QUOTE* QUOTE
+string       : QUOTE string_part* QUOTE
 
-QUOTE     : /"/
-NON_QUOTE : /[^"]/
+string_part  : var_subst
+             | escaped_dollar
+             | normal_text
+
+var_subst    : DOLLAR LBRACE IDENTIFIER RBRACE
+escaped_dollar : DOLLAR DOLLAR
+normal_text  : /[^"$]+/
+
+QUOTE        : /"/
+DOLLAR       : /\$/
+LBRACE       : /\{/
+RBRACE       : /\}/
+IDENTIFIER   : /[a-zA-Z_][a-zA-Z0-9_]*/
+%ignore " "
 """
 
 
@@ -39,8 +51,18 @@ class StringTransformer(Transformer):
         self.vars = vars
         super().__init__()
 
-    def string(self, *args):
-        return "..."  # implemente o transformer aqui!
+    def string(self, *parts):
+        return "".join(parts)
+    
+    def var_subst(self, dollar, lbrace, identifier, rbrace):
+        var_name = str(identifier)
+        return self.vars.get(var_name, "")
+    
+    def escaped_dollar(self, dollar1, dollar2):
+        return "$"
+    
+    def normal_text(self, text):
+        return str(text)
 
 
 # Não modifique essa função!

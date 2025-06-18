@@ -202,6 +202,11 @@ class Assign(Expr):
 
     def eval(self, ctx: Ctx):
         val = self.value.eval(ctx)
+        if is_fortran_int(self.name):
+            try:
+                val = int(val)
+            except Exception:
+                pass
         ctx[self.name] = val
         return val
 
@@ -237,6 +242,11 @@ class Setattr(Expr):
     def eval(self, ctx: Ctx):
         obj_value = self.obj.eval(ctx)
         val = self.value.eval(ctx)
+        if is_fortran_int(self.attr):
+            try:
+                val = int(val)
+            except Exception:
+                pass
         setattr(obj_value, self.attr, val)
         return val
 
@@ -275,10 +285,15 @@ class VarDef(Stmt):
     """
     name: str
     value: Expr
-    type_hint: Optional[str] = None  # <-- Adicionado
+    type_hint: Optional[str] = None
 
     def eval(self, ctx: Ctx):
         val = self.value.eval(ctx)
+        if is_fortran_int(self.name):
+            try:
+                val = int(val)
+            except Exception:
+                pass
         ctx.scope[self.name] = val
 
 
@@ -381,3 +396,6 @@ def lox_str(value):
         return value
     else:
         return str(value)
+
+def is_fortran_int(name: str) -> bool:
+    return name and name[0] in "ijklmn"

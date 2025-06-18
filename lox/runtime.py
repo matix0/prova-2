@@ -105,3 +105,38 @@ def truthy(value: "Value") -> bool:
     if value is None or value is False:
         return False
     return True
+
+
+def lox_add(a, b):
+    if isinstance(a, int) and isinstance(b, int):
+        return int(a + b)
+    try:
+        return float(a) + float(b)
+    except Exception:
+        return str(a) + str(b)
+
+
+def lox_sub(a, b):
+    if isinstance(a, int) and isinstance(b, int):
+        return int(a - b)
+    return float(a) - float(b)
+
+
+def lox_mul(a, b):
+    if isinstance(a, int) and isinstance(b, int):
+        return int(a * b)
+    return float(a) * float(b)
+
+
+def lox_truediv(a, b):
+    if isinstance(a, int) and isinstance(b, int):
+        return int(a // b)
+    return float(a) / float(b)
+
+
+__all__ += [
+    "lox_add",
+    "lox_sub",
+    "lox_mul",
+    "lox_truediv",
+]
