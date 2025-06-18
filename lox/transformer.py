@@ -34,11 +34,36 @@ class LoxTransformer(Transformer):
         return Program(list(declarations))
 
     # Declarações
-    def var_decl(self, name, value=None):
-        # Se não há valor inicial, usa nil (None)
+    def var_decl(self, name, type_hint=None, value=None):
         if value is None:
             value = Literal(None)
-        return VarDef(name.name if isinstance(name, Var) else str(name), value)
+        return VarDef(
+            name.name if isinstance(name, Var) else str(name),
+            value,
+            type_hint
+        )
+
+    def type_hint(self, name, nullable=None):
+        t = str(name)
+        if nullable:
+            t += "?"
+        return t
+
+    def fun_decl(self, name, params=None, return_type=None, body=None):
+        if params is None:
+            params = []
+        return Function(
+            name.name if isinstance(name, Var) else str(name),
+            params,
+            body,
+            return_type
+        )
+
+    def param_decl(self, name, type_hint=None):
+        return (name.name if isinstance(name, Var) else str(name), type_hint)
+
+    def params_decl(self, *params):
+        return list(params)
 
     # Comandos
     def print_cmd(self, expr):

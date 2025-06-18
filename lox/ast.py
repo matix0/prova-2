@@ -1,6 +1,6 @@
 from abc import ABC
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Optional
 
 from lox.runtime import truthy
 
@@ -275,6 +275,7 @@ class VarDef(Stmt):
     """
     name: str
     value: Expr
+    type_hint: Optional[str] = None  # <-- Adicionado
 
     def eval(self, ctx: Ctx):
         val = self.value.eval(ctx)
@@ -336,6 +337,10 @@ class Function(Stmt):
 
     Ex.: fun f(x, y) { ... }
     """
+    name: str
+    params: list[tuple[str, Optional[str]]]  # (nome, tipo)
+    body: Block
+    return_type: Optional[str] = None        # <-- Adicionado
 
 
 @dataclass
